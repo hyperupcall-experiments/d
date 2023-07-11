@@ -51,7 +51,11 @@ struct ExpandStringResult {
 	enum ExpandStringCode code;
 	char *str;
 };
+int parse_config_handler(void *data, const char *section, const char *key, const char *value);
+struct Cli parse_cli(int argc, char *argv[]);
+struct Config parse_config(char *config_file);
 
+void die(char *message);
 struct ExpandStringResult expand_string(char *input, struct ExpandStringVars vars);
 void command_init(struct Cli cli, struct Config config);
 void command_list(struct Cli cli, struct Config config);
