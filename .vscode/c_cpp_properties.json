@@ -1,0 +1,12 @@
+{
+    "configurations": [
+        {
+			"name": "Linux",
+            "cStandard": "c89",
+            "intelliSenseMode": "linux-gcc-x64",
+            "compilerPath": "/usr/bin/clang",
+            "cppStandard": "c++14"
+        }
+    ],
+    "version": 4
+}

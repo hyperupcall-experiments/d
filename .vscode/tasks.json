@@ -1,0 +1,11 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "compile",
+			"type":"process",
+			"command": "gcc",
+			"args": ["-Wall", "-Wextra", "-Wpedantic", "-g", "-L", "./inih/build", "main.c", "test.c", "-linih", "-o", "./test"],
+		}
+	]
+}
