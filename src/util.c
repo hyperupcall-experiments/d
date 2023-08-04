@@ -161,9 +161,9 @@ struct ExpandStringResult expand_string(char *input, struct ExpandStringVars var
 			memset(var, 0, right - left);
 			strncat(var, left + 1, right - left - 1);
 			bool found = false;
-			for (unsigned int i = 0; i < vars.len; ++i) {
-				if (STR_EQ(var, vars.vars[i].key)) {
-					strcat(output, vars.vars[i].value);
+			for (unsigned int i = 0; vars.pairs[i].key != NULL; ++i) {
+				if (STR_EQ(var, vars.pairs[i].key)) {
+					strcat(output, vars.pairs[i].value);
 					result.code = ES_SUCCESS;
 					found = true;
 				}
@@ -210,11 +210,11 @@ char pwddir[PATH_MAX];
 		strcat(cfgdir, "/.config");
 
 		struct ExpandStringVars vars = {
-			.len = 3,
-			.vars = {
+			.pairs = {
 				{.key = "home", .value = homedir},
 				{.key = "pwd", .value = pwddir},
 				{.key = "cfg", .value = cfgdir},
+				NULL,
 			},
 		};
 

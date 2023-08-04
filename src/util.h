@@ -43,8 +43,7 @@ struct ExpandStringVar {
 };
 
 struct ExpandStringVars {
-	unsigned int len;
-	struct ExpandStringVar vars[100];
+	struct ExpandStringVar pairs[100];
 };
 
 struct ExpandStringResult {

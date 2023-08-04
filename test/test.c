@@ -6,8 +6,7 @@
 
 int main() {
 	struct ExpandStringVars empty_vars = {
-		.len = 0,
-		.vars = {{0}},
+		.pairs = {NULL},
 	};
 
 	// No expansions
@@ -96,9 +95,9 @@ int main() {
 	// Working
 	{
 		struct ExpandStringVars vars = {
-			.len = 1,
-			.vars = {
+			.pairs = {
 				{.key = "word", .value = "cool"},
+				NULL,
 			},
 		};
 		struct ExpandStringResult r = expand_string("${word}/X11", vars);
@@ -108,9 +107,9 @@ int main() {
 
 	{
 		struct ExpandStringVars vars = {
-			.len = 1,
-			.vars = {
+			.pairs = {
 				{.key = "word", .value = "cool"},
+				NULL,
 			},
 		};
 		struct ExpandStringResult r = expand_string("fox-${word}", vars);
@@ -119,10 +118,10 @@ int main() {
 	}
 	{
 		struct ExpandStringVars vars = {
-			.len = 2,
-			.vars = {
+			.pairs = {
 				{.key = "a", .value = "super"},
 				{.key = "b", .value = "epic"},
+				NULL,
 			},
 		};
 		struct ExpandStringResult r = expand_string("fox-${a}_${b}", vars);
