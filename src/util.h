@@ -2,14 +2,44 @@
 
 #define MAX_TAGS 10
 #define MAX_ENTRIES 500
-#define STR_EQ(s1, s2) (strcmp(s1, s2) == 0)
+
+enum EntryWhat {
+	WHAT_UNKNOWN,
+	WHAT_FILE,
+	WHAT_DIR,
+};
 
 struct Entry {
 	char const *path;
 	char const *source;
 	char const *target;
-	char const *what;
+	enum EntryWhat what;
 	char *tags[MAX_TAGS];
+};
+
+enum OPTIONS_COMMAND {
+	COMMAND_UNKNOWN,
+	COMMAND_INIT,
+	COMMAND_LIST,
+	COMMAND_DEPLOY,
+	COMMAND_UNDEPLOY,
+	COMMAND_REPLACE,
+};
+
+enum OPTIONS_LOG {
+	LOG_UNKNOWN,
+	LOG_NORMAL,
+	LOG_VERBOSE,
+	LOG_DEBUG,
+};
+
+struct Options {
+	enum OPTIONS_COMMAND command;
+	char *config_file;
+	bool dry_run;
+	bool interactive;
+	enum OPTIONS_LOG log;
+	bool help;
 };
 
 struct Config {
@@ -19,15 +49,7 @@ struct Config {
 	char const *target_root_dir;
 	unsigned int entries_len;
 	struct Entry entries[MAX_ENTRIES];
-};
-
-struct Cli {
-	char *command;
-	char *config_file;
-	bool dry_run;
-	bool interactive;
-	char *log;
-	bool help;
+	struct Options cli;
 };
 
 enum ExpandStringCode {
@@ -50,14 +72,22 @@ struct ExpandStringResult {
 	enum ExpandStringCode code;
 	char *str;
 };
-int parse_config_handler(void *data, const char *section, const char *key, const char *value);
-struct Cli parse_cli(int argc, char *argv[]);
-struct Config parse_config(char *config_file);
 
-void die(char *message);
+void _mkdir(const char *dir);
+int dircount(char *dir);
+__attribute__((noreturn)) void die(const char *format, ...);
+bool should_debug();
+void show_help();
+
+void deploy_symlink(char *source, char *target, enum EntryWhat);
+
 struct ExpandStringResult expand_string(char *input, struct ExpandStringVars vars);
-void command_init(struct Cli cli, struct Config config);
-void command_list(struct Cli cli, struct Config config);
-void command_deploy(struct Cli cli, struct Config config);
-void command_replace(struct Cli cli, struct Config config);
-void command_undeploy(struct Cli cli, struct Config config);
+struct Options generate_options(int argc, char *argv[]);
+struct Config parse_config(struct Options);
+int parse_config_handler(void *data, const char *section, const char *key, const char *value);
+
+void command_init(struct Options cli, struct Config config);
+void command_list(struct Options cli, struct Config config);
+void command_deploy(struct Options cli, struct Config config);
+void command_replace(struct Options cli, struct Config config);
+void command_undeploy(struct Options cli, struct Config config);

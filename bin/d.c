@@ -12,24 +12,20 @@
 #include "util.h"
 
 int main(int argc, char *argv[]) {
-	struct Cli cli = parse_cli(argc, argv);
-	if (cli.help) {
-		show_help();
-		exit(0);
-	}
-	struct Config config = parse_config(cli.config_file);
+	struct Options options = generate_options(argc, argv);
+	struct Config config = parse_config(options);
 
-	if (STR_EQ(cli.command, "init")) {
-		command_init(cli, config);
-	} else if (STR_EQ(cli.command, "list")) {
-		command_list(cli, config);
-	} else if (STR_EQ(cli.command, "deploy")) {
-		command_deploy(cli, config);
-	} else if (STR_EQ(cli.command, "replace")) {
-		command_replace(cli, config);
-	} else if (STR_EQ(cli.command, "undeploy")) {
-		command_undeploy(cli, config);
+	if (options.command == COMMAND_INIT) {
+		command_init(options, config);
+	} else if (options.command == COMMAND_LIST) {
+		command_list(options, config);
+	} else if (options.command == COMMAND_DEPLOY) {
+		command_deploy(options, config);
+	} else if (options.command == COMMAND_UNDEPLOY) {
+		command_undeploy(options, config);
+	} else if (options.command == COMMAND_REPLACE) {
+		command_replace(options, config);
 	} else {
-		die("Command not accounted for");
+		die("Failed to recognize subcommand: %i", options.command);
 	}
 }

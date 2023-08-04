@@ -53,8 +53,18 @@ project_target = executable(
 )
 
 test_main = executable(
-	'test_main',
-	'test/test.c',
+	'test_expand_string',
+	'test/expand_string.c',
+	dependencies: project_dependencies,
+	# link_with: project_dependencies,
+	install : false,
+	include_directories : my_inc2,
+	c_args : build_args,
+)
+
+test_main2 = executable(
+	'test_integration',
+	'test/integration.c',
 	dependencies: project_dependencies,
 	# link_with: project_dependencies,
 	install : false,
@@ -63,3 +73,4 @@ test_main = executable(
 )
 
 test('basic', test_main)
+test('integration', test_main2)

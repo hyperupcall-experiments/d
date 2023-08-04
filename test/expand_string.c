@@ -13,17 +13,17 @@ int main() {
 	{
 		struct ExpandStringResult r = expand_string("", empty_vars);
 		assert(r.code == ES_SUCCESS);
-		assert(STR_EQ("", r.str));
+		assert(strcmp("", r.str) == 0);
 	}
 	{
 		struct ExpandStringResult r = expand_string("f", empty_vars);
 		assert(r.code == ES_SUCCESS);
-		assert(STR_EQ("f", r.str));
+		assert(strcmp("f", r.str) == 0);
 	}
 	{
 		struct ExpandStringResult r = expand_string("fox", empty_vars);
 		assert(r.code == ES_SUCCESS);
-		assert(STR_EQ("fox", r.str));
+		assert(strcmp("fox", r.str) == 0);
 	}
 
 	// Bad syntax: Dollar
@@ -102,7 +102,7 @@ int main() {
 		};
 		struct ExpandStringResult r = expand_string("${word}/X11", vars);
 		assert(r.code == ES_SUCCESS);
-		assert(STR_EQ(r.str, "cool/X11"));
+		assert(strcmp(r.str, "cool/X11") == 0);
 	}
 
 	{
@@ -114,7 +114,7 @@ int main() {
 		};
 		struct ExpandStringResult r = expand_string("fox-${word}", vars);
 		assert(r.code == ES_SUCCESS);
-		assert(STR_EQ(r.str, "fox-cool"));
+		assert(strcmp(r.str, "fox-cool") == 0);
 	}
 	{
 		struct ExpandStringVars vars = {
@@ -126,6 +126,6 @@ int main() {
 		};
 		struct ExpandStringResult r = expand_string("fox-${a}_${b}", vars);
 		assert(r.code == ES_SUCCESS);
-		assert(STR_EQ(r.str, "fox-super_epic"));
+		assert(strcmp(r.str, "fox-super_epic") == 0);
 	}
 }
