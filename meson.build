@@ -30,26 +30,36 @@ my_dep = declare_dependency(link_with : my_lib,
 build_args = [
 ]
 project_source_files = [
-  'bin/d.c'
+	'bin/d.c'
 ]
 project_dependencies = [
 	my_dep
 ]
 build_args += [
-  '-DPROJECT_NAME=' + meson.project_name(),
-  '-DPROJECT_VERSION=' + meson.project_version(),
+	'-DPROJECT_NAME=' + meson.project_name(),
+	'-DPROJECT_VERSION=' + meson.project_version(),
 ]
 
 
 
 project_dependencies += inih_dep
 project_target = executable(
-  meson.project_name(),
-  project_source_files,
-  dependencies: project_dependencies,
-  install : false,
+	meson.project_name(),
+	project_source_files,
+	dependencies: project_dependencies,
+	install : false,
 	include_directories : my_inc2,
-  c_args : build_args,
+	c_args : build_args,
 )
 
-test('basic', project_target)
+test_main = executable(
+	'test_main',
+	'test/test.c',
+	dependencies: project_dependencies,
+	# link_with: project_dependencies,
+	install : false,
+	include_directories : my_inc2,
+	c_args : build_args,
+)
+
+test('basic', test_main)

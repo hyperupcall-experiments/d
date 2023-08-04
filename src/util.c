@@ -158,6 +158,7 @@ struct ExpandStringResult expand_string(char *input, struct ExpandStringVars var
 			strncat(output, start, dollar - start);
 
 			char *var = malloc(right - left);
+			memset(var, 0, right - left);
 			strncat(var, left + 1, right - left - 1);
 			bool found = false;
 			for (unsigned int i = 0; i < vars.len; ++i) {

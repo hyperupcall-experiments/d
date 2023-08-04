@@ -11,8 +11,7 @@ I've learned some things:
 - Continue to implement undeploy
 - Continue to properly test
 - Explicitly specify if file/directory
-   - That way, a directory can exist at source location (with multiple choices)
-
+  - That way, a directory can exist at source location (with multiple choices)
 - Implement interactive mode
 - Implement command to interactively swap out file
 - Make status updates one line
