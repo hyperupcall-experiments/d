@@ -1,19 +1,17 @@
 #define _GNU_SOURCE
+#include <dlfcn.h>
+#include <errno.h>
+#include <libgen.h>
 #include <linux/limits.h>
+#include <pwd.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/inotify.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-
-#include <dlfcn.h>
-#include <errno.h>
-#include <libgen.h>
-#include <pwd.h>
-#include <sys/inotify.h>
-#include <sys/types.h>
 
 struct Entry {
 	char const *category;
@@ -44,8 +42,6 @@ void fail(struct Failure failure) {
 	exit(EXIT_FAILURE);
 }
 void deploy(char *, char *, bool);
-
-static char *So_file = "/home/edwin/.dotfiles/os-unix/data/libdotfiles.so"; // TODO
 
 int main(int argc, char *argv[]) {
 	static bool debug = false;
@@ -94,12 +90,8 @@ int main(int argc, char *argv[]) {
 	}
 
 	if (command == CommandCompile) {
-		char *cmd = NULL;
-		if (!asprintf(&cmd, "cd /home/edwin/.dotfiles/os-unix/data && gcc -Werror=unused-variable -g -fPIC -c "
-		                    "./dotfiles.c -o ./dotfiles.o && gcc -shared -o ./libdotfiles.so ./dotfiles.o")) { // TODO
-			fail((struct Failure){.operation = "asprintf", .reason = strerror(errno), .info = cmd});
-		}
-
+		char *cmd = "gcc -Werror=unused-variable -g -fPIC -c " CONFIG_DIR "/dotfiles.c -o " CONFIG_DIR
+		            "/dotfiles.o && gcc -shared -o " CONFIG_DIR "/libdotfiles.so " CONFIG_DIR "/dotfiles.o";
 		if (system(cmd) == -1) {
 			fail((struct Failure){.operation = "system", .reason = strerror(errno)});
 		};
@@ -109,7 +101,7 @@ int main(int argc, char *argv[]) {
 		return EXIT_SUCCESS;
 	}
 
-	void *handle = dlopen(So_file, RTLD_LAZY);
+	void *handle = dlopen(CONFIG_DIR "/libdotfiles.so", RTLD_LAZY);
 	if (!handle) {
 		fprintf(stderr, "%s\n", dlerror());
 		exit(EXIT_FAILURE);
