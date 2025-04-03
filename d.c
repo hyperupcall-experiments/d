@@ -31,10 +31,12 @@ void fail(struct Failure failure) {
 #define MAGENTA "\033[0;35m"
 #define RESET "\033[0m"
 
-	fprintf(stderr,
-	        "Application reached a " RED "terminating failure" RESET "...\n" BLUE "Operation: " RESET
-	        "Failed to %s\n" CYAN "Reason: " RESET "%s\n",
-	        failure.operation, failure.reason);
+	fprintf(
+	    stderr,
+	    "Application reached a " RED "terminating failure" RESET "...\n" BLUE "Operation: " RESET "Failed to %s\n" CYAN
+	    "Reason: " RESET "%s\n",
+	    failure.operation, failure.reason
+	);
 	if (failure.info != NULL) {
 		fprintf(stderr, YELLOW "Extra Information: " RESET "%s\n", failure.info);
 	}
@@ -130,8 +132,10 @@ int main(int argc, char *argv[]) {
 			}
 
 			if (command == CommandPrint) {
-				printf("\t{ \"category\": \"%s\", \"source\": \"%s\", \"destination\": \"%s\" }", entry.category,
-				       entry.source, entry.destination);
+				printf(
+				    "\t{ \"category\": \"%s\", \"source\": \"%s\", \"destination\": \"%s\" }", entry.category, entry.source,
+				    entry.destination
+				);
 				if (configuration[i + 1] == NULL) {
 					printf("\n");
 				} else {
@@ -179,8 +183,9 @@ void deploy(char *source_path, char *destination_path, bool debug) {
 	{
 		if (destination_path[strlen(destination_path) - 1] == '/') {
 			if (source_path[strlen(source_path) - 1] != '/') {
-				fprintf(stderr,
-				        "Error: If destination path does have trailing slash, then source path must have it too.\n");
+				fprintf(
+				    stderr, "Error: If destination path does have trailing slash, then source path must have it too.\n"
+				);
 				exit(1);
 			}
 
@@ -190,7 +195,8 @@ void deploy(char *source_path, char *destination_path, bool debug) {
 			if (source_path[strlen(source_path) - 1] == '/') {
 				fprintf(
 				    stderr,
-				    "Error: If destination path does not have trailing slash, then source path must not have it either.\n");
+				    "Error: If destination path does not have trailing slash, then source path must not have it either.\n"
+				);
 				exit(1);
 			}
 		}
