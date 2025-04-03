@@ -1,61 +1,69 @@
 # d
 
-I'm implementing another dotfile manager 😮‍💨
+![Sun God](./assets/sun-god.png)
 
-- I stopped working on [dotfox](https://github.com/fox-archives/dotfox) because I [lost confidence](https://forum.nim-lang.org/t/10312#68553) in the [social](https://forum.dlang.org/post/wzoecavcswedkiebcjft@forum.dlang.org) and [technical](https://news.ycombinator.com/threads?id=carterza) leadership for the language I was using, Nim
-- [dotmgr](https://github.com/hyperupcall/dotmgr) was supposed to replace it, but it grew too much in scope and it doesn't work on all platforms (Cygwin)
+---
 
-I've learned some things:
+A dotfile manager.
 
-- Continue to use symlinks
-- Continue to implement undeploy
-- Continue to properly test
-- Explicitly specify if file/directory
-  - That way, a directory can exist at source location (with multiple choices)
-- Implement interactive mode
-- Implement command to interactively swap out file
-- Make status updates one line
+## Features
 
-## Additional Goals
-
-- Heapless (TODO)
-- Multi-platform
+- NOT "SUCKLESS" (IF YOU HAVE TO CONVINCE ME THAT YOUR SOFTWARE "SUCKS LESS", THEN IT ACTUALLY SUCKS!)
+- NO "CONFIGURATION FILES" (THE CONCEPT OF "CONFIGURATION FILES" SHOULD NOT EXIST!)
+- NO "DOCUMENTATION" (WHAT IS THAT?)
+- NOT WRITTEN IN RUST (NO, I'M NOT INSANE!)
 
 ## Summary
 
-### Config
+On a more serious note, `d` is your standard dotfile manager, with the twist that it can be configured using C, hopefully leveraging the ~~cursed~~ C preprocessor. It's meant to be small and only does what it says it does.
 
-Configure which files to manage with an INI-style file.
+It approaches reconciliation using symlinks. It doesn't support templates or any of that nonsense.
 
-First, label the location of the source and target directories. All paths are relative to these
+A disclaimer for those curious to use `d`: currently, the code is dogshit. But I'm sure that many of you wouldn't mind one bit.
 
-```ini
-source_root_dir = $pwd/source
-target_root_dir = $pwd/target
+### Usage
+
+```bash
+git clone git@github.com:fox-incubating/d
+cd ./d
+# Currently a few things are hardcoded. If you're still as brave as you think you are,
+# you can check the TODO comments in the source
+make CONFIG_FILE="$HOME/dotfiles.c" install
 ```
 
-Then, come the variables. By default, `$home` and `$pwd` (relative to the file) are defined, but you can define more (TODO)
+`CONFIG_FILE` should look something like:
 
-```ini
-[vars]
-cfg = ${XDG_CONFIG_HOME:-$HOME/.config}
-data = ${XDG_DATA_HOME:-$HOME/.local/share}
-state = ${XDG_DATA_HOME:-$HOME/.local/state}
+```c
+struct Entry {
+	char const *category;
+	char const *source;
+	char const *destination;
+};
+#define Done { \
+	.category = NULL, .source = NULL, .destination = NULL \
+}
+
+static struct Entry bash[] = {
+	{
+		.category = "bash"
+		.source = "/home/edwin/.dotfiles/.bashrc",
+		.destination = "/home/edwin/.bashrc"
+	},
+	Done
+};
+
+struct Entry *configuration[] = {
+	bash
+};
 ```
 
-Lastly, list your entries. There are two types:
+The really cool part about this, is that you can use macros. If you don't like macros, then maybe this software isn't for you. For an example, see my own [dotfiles.c](https://github.com/hyperupcall/dotfiles/blob/trunk/os-unix/data/dotfiles.c). Later I'll probably support some sort of `get_configuration()` to allow the use of runtime shenanigans.
 
-Tags are TODO
+Whenever you edit, you must run `./d compile` to compile the C program into a shared object file. It'll be dynamically loaded on subsequent invocations. Maybe I'll add a file watcher sometime.
 
-```ini
-[entry]
-path = .bashrc
-what = file
-tags = [Bash]
+Now, you can use `d` like any other dotfile manager:
 
-[entry]
-source = $cfg/X11/xinitrc
-target = $home/.xinitrc
-what = file
-tags = [X11]
+```console
+$ d deploy
+$ d undeploy
 ```

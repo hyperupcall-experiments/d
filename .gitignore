@@ -1,5 +1,2 @@
 *.o
-cosmopolitan/
-inih/
-.vscode/
-.cache/
+/d
