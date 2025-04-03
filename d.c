@@ -160,9 +160,19 @@ int main(int argc, char *argv[]) {
 				snprintf(destination_path, PATH_MAX, "%s", entry.destination);
 				deploy(source_path, destination_path, debug);
 			} else if (command == CommandUndeploy) {
-				if (unlink(entry.destination) == -1) {
-					perror("unlink");
-					exit(1);
+				char source_path[PATH_MAX];
+				char destination_path[PATH_MAX];
+				snprintf(source_path, PATH_MAX, "%s", entry.source);
+				snprintf(destination_path, PATH_MAX, "%s", entry.destination);
+				if (destination_path[strlen(destination_path) - 1] == '/') {
+					destination_path[strlen(destination_path) - 1] = '\0';
+				}
+				if (unlink(destination_path) == -1) {
+					if (errno != ENOENT) {
+						fprintf(stderr, "Failed to unlink \"%s\"\n", destination_path);
+						perror("unlink");
+						exit(1);
+					}
 				}
 			}
 		}
