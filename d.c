@@ -62,15 +62,13 @@ int main(int argc, char *argv[]) {
 	}
 
 	char *help_menu = "d: A dotfile manager.\n"
-	                  "Commands: <deploy | undeploy | print | compile>\n"
-	                  "Flags: --dry (for deploy/undeploy)";
+	                  "Commands: <deploy[ --dry] | undeploy[ --dry] | print>\n";
 
 	enum Command {
 		CommandNone,
 		CommandDeploy,
 		CommandUndeploy,
 		CommandPrint,
-		CommandCompile,
 	} command = CommandNone;
 
 	if (argc < 2) {
@@ -86,8 +84,6 @@ int main(int argc, char *argv[]) {
 		command = CommandUndeploy;
 	} else if (strcmp(argv[1], "print") == 0) {
 		command = CommandPrint;
-	} else if (strcmp(argv[1], "compile") == 0) {
-		command = CommandCompile;
 	} else {
 		char *strp = NULL;
 		if (asprintf(&strp, "\nSubcommand: %s\n---\nHELP MENU:\n%s", argv[1], help_menu) == -1) {
@@ -102,7 +98,6 @@ int main(int argc, char *argv[]) {
 		    .info = strp,
 		});
 	}
-
 	if ((command == CommandDeploy || command == CommandUndeploy) && argc > 2) {
 		if (strcmp(argv[2], "--dry") == 0) {
 			is_dry_run = true;
@@ -129,21 +124,16 @@ int main(int argc, char *argv[]) {
 
 	char *filename = basename(config_file_copy);
 
-	if (command == CommandCompile) {
-		if (asprintf(&cmd, "gcc -g -fPIC -c %s -o %s/%s.o && gcc -shared -o %s/libdotfiles.so %s/%s.o",
-		             CONFIG_DIR, dir, filename, dir, dir, filename) == -1) {
-			error((struct Failure){.operation = "format command with asprintf", .reason = strerror(errno)});
-			goto error;
-		}
-
-		if (system(cmd) == -1) {
-			error((struct Failure){.operation = "system", .reason = strerror(errno)});
-			goto error;
-		};
-
-		printf("Compiled configuration file\n");
-		goto cleanup;
+	if (asprintf(&cmd, "gcc -g -fPIC -c %s -o %s/%s.o && gcc -shared -o %s/libdotfiles.so %s/%s.o",
+	             CONFIG_DIR, dir, filename, dir, dir, filename) == -1) {
+		error((struct Failure){.operation = "format command with asprintf", .reason = strerror(errno)});
+		goto error;
 	}
+
+	if (system(cmd) == -1) {
+		error((struct Failure){.operation = "system", .reason = strerror(errno)});
+		goto error;
+	};
 
 	handle = dlopen(lib_path, RTLD_LAZY);
 	if (!handle) {
@@ -221,14 +211,6 @@ int main(int argc, char *argv[]) {
 	}
 	if (command == CommandPrint)
 		printf("]\n");
-
-cleanup:
-	if (handle) dlclose(handle);
-	if (lib_path) free(lib_path);
-	if (config_file_copy) free(config_file_copy);
-	if (config_dir) free(config_dir);
-	if (cmd) free(cmd);
-	return 1;
 
 error:
 	if (handle) dlclose(handle);
