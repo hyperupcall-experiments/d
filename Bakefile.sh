@@ -6,7 +6,10 @@ init() {
 }
 
 task.build() {
-	bear -- gcc $CFLAGS -DCONFIG_DIR=$1 d.c -o ./d
+	local dir=$1
+	bake.assert_not_empty dir
+
+	bear -- gcc $CFLAGS -DCONFIG_DIR="\"$dir\"" d.c -o ./d
 }
 
 task.run() {

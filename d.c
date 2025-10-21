@@ -1,4 +1,5 @@
 #define _GNU_SOURCE
+
 #include <dlfcn.h>
 #include <errno.h>
 #include <libgen.h>
@@ -23,14 +24,13 @@ struct Failure {
 	char *reason;
 	char *info;
 };
-void fail(struct Failure failure) {
+void error(struct Failure failure) {
 #define RED "\033[0;31m"
 #define BLUE "\033[0;34m"
 #define CYAN "\033[0;36m"
 #define YELLOW "\033[0;33m"
 #define MAGENTA "\033[0;35m"
 #define RESET "\033[0m"
-
 	fprintf(
 	    stderr,
 	    "Application reached a " RED "terminating failure" RESET "...\n" BLUE "Operation: " RESET "Failed to %s\n" CYAN
@@ -40,19 +40,30 @@ void fail(struct Failure failure) {
 	if (failure.info != NULL) {
 		fprintf(stderr, YELLOW "Extra Information: " RESET "%s\n", failure.info);
 	}
-
+}
+void fail(struct Failure failure) {
+	error(failure);
 	exit(EXIT_FAILURE);
 }
-void deploy(char *, char *, bool);
+void deploy(char *, char *, bool, bool);
 
 int main(int argc, char *argv[]) {
-	static bool debug = false;
+	static bool is_debug = false;
+	static bool is_dry_run = false;
+
+	char *config_dir = NULL;
+	char *config_file_copy = NULL;
+	char *lib_path = NULL;
+	char *cmd = NULL;
+	void *handle = NULL;
+
 	if (getenv("DEBUG") != NULL) {
-		debug = true;
+		is_debug = true;
 	}
 
 	char *help_menu = "d: A dotfile manager.\n"
-	                  "Commands: <deploy | undeploy | print | compile>";
+	                  "Commands: <deploy | undeploy | print | compile>\n"
+	                  "Flags: --dry (for deploy/undeploy)";
 
 	enum Command {
 		CommandNone,
@@ -68,6 +79,7 @@ int main(int argc, char *argv[]) {
 		    .reason = "Must pass a subcommand",
 		});
 	}
+
 	if (strcmp(argv[1], "deploy") == 0) {
 		command = CommandDeploy;
 	} else if (strcmp(argv[1], "undeploy") == 0) {
@@ -91,30 +103,60 @@ int main(int argc, char *argv[]) {
 		});
 	}
 
+	if ((command == CommandDeploy || command == CommandUndeploy) && argc > 2) {
+		if (strcmp(argv[2], "--dry") == 0) {
+			is_dry_run = true;
+		}
+	}
+
+	config_dir = strdup(CONFIG_DIR);
+	if (!config_dir) {
+		error((struct Failure){.operation = "duplicate config dir", .reason = strerror(errno)});
+		goto error;
+	}
+	char *dir = dirname(config_dir);
+
+	config_file_copy = strdup(CONFIG_DIR);
+	if (!config_file_copy) {
+		error((struct Failure){.operation = "duplicate config file", .reason = strerror(errno)});
+		goto error;
+	}
+
+	if (asprintf(&lib_path, "%s/libdotfiles.so", dir) == -1) {
+		error((struct Failure){.operation = "format library path with asprintf", .reason = strerror(errno)});
+		goto error;
+	}
+
+	char *filename = basename(config_file_copy);
+
 	if (command == CommandCompile) {
-		char *cmd = "gcc -Werror=unused-variable -g -fPIC -c " CONFIG_DIR "/dotfiles.c -o " CONFIG_DIR
-		            "/dotfiles.o && gcc -shared -o " CONFIG_DIR "/libdotfiles.so " CONFIG_DIR "/dotfiles.o";
+		if (asprintf(&cmd, "gcc -g -fPIC -c %s -o %s/%s.o && gcc -shared -o %s/libdotfiles.so %s/%s.o",
+		             CONFIG_DIR, dir, filename, dir, dir, filename) == -1) {
+			error((struct Failure){.operation = "format command with asprintf", .reason = strerror(errno)});
+			goto error;
+		}
+
 		if (system(cmd) == -1) {
-			fail((struct Failure){.operation = "system", .reason = strerror(errno)});
+			error((struct Failure){.operation = "system", .reason = strerror(errno)});
+			goto error;
 		};
 
 		printf("Compiled configuration file\n");
-
-		return EXIT_SUCCESS;
+		goto cleanup;
 	}
 
-	void *handle = dlopen(CONFIG_DIR "/libdotfiles.so", RTLD_LAZY);
+	handle = dlopen(lib_path, RTLD_LAZY);
 	if (!handle) {
 		fprintf(stderr, "%s\n", dlerror());
-		exit(EXIT_FAILURE);
+		goto error;
 	}
 	dlerror();
 
 	struct Entry(**configuration) = (struct Entry **)dlsym(handle, "configuration");
-	char *error = dlerror();
-	if (error != NULL) {
-		fprintf(stderr, "%s\n", error);
-		exit(1);
+	char *dl_error = dlerror();
+	if (dl_error != NULL) {
+		fprintf(stderr, "%s\n", dl_error);
+		goto error;
 	}
 
 	if (command == CommandPrint)
@@ -147,14 +189,14 @@ int main(int argc, char *argv[]) {
 			char *home = getenv("HOME");
 			if (home == NULL) {
 				perror("getenv");
-				exit(1);
+				goto error;
 			}
 			if (command == CommandDeploy) {
 				char source_path[PATH_MAX];
 				char destination_path[PATH_MAX];
 				snprintf(source_path, PATH_MAX, "%s", entry.source);
 				snprintf(destination_path, PATH_MAX, "%s", entry.destination);
-				deploy(source_path, destination_path, debug);
+				deploy(source_path, destination_path, is_debug, is_dry_run);
 			} else if (command == CommandUndeploy) {
 				char source_path[PATH_MAX];
 				char destination_path[PATH_MAX];
@@ -163,11 +205,15 @@ int main(int argc, char *argv[]) {
 				if (destination_path[strlen(destination_path) - 1] == '/') {
 					destination_path[strlen(destination_path) - 1] = '\0';
 				}
-				if (unlink(destination_path) == -1) {
-					if (errno != ENOENT) {
-						fprintf(stderr, "Failed to unlink \"%s\"\n", destination_path);
-						perror("unlink");
-						exit(1);
+				if (is_dry_run) {
+					printf("[DRY RUN] Would unlink: %s\n", destination_path);
+				} else {
+					if (unlink(destination_path) == -1) {
+						if (errno != ENOENT) {
+							fprintf(stderr, "Failed to unlink \"%s\"\n", destination_path);
+							perror("unlink");
+							goto error;
+						}
 					}
 				}
 			}
@@ -175,10 +221,25 @@ int main(int argc, char *argv[]) {
 	}
 	if (command == CommandPrint)
 		printf("]\n");
-	dlclose(handle);
+
+cleanup:
+	if (handle) dlclose(handle);
+	if (lib_path) free(lib_path);
+	if (config_file_copy) free(config_file_copy);
+	if (config_dir) free(config_dir);
+	if (cmd) free(cmd);
+	return 1;
+
+error:
+	if (handle) dlclose(handle);
+	if (lib_path) free(lib_path);
+	if (config_file_copy) free(config_file_copy);
+	if (config_dir) free(config_dir);
+	if (cmd) free(cmd);
+	exit(1);
 }
 
-void deploy(char *source_path, char *destination_path, bool debug) {
+void deploy(char *source_path, char *destination_path, bool debug, bool dry_run) {
 	// Check trailing slash.
 	{
 		if (destination_path[strlen(destination_path) - 1] == '/') {
@@ -246,10 +307,15 @@ void deploy(char *source_path, char *destination_path, bool debug) {
 				perror("stat");
 				exit(1);
 			}
-			printf("Creating directory for: %s\n", dir);
-			if (mkdir(dir, 0755) == -1) {
-				perror("mkdir");
-				exit(1);
+
+			if (dry_run) {
+				printf("[DRY RUN] Would create directory: %s\n", dir);
+			} else {
+				printf("Creating directory for: %s\n", dir);
+				if (mkdir(dir, 0755) == -1) {
+					perror("mkdir");
+					exit(1);
+				}
 			}
 		}
 		free(dir);
@@ -259,6 +325,7 @@ void deploy(char *source_path, char *destination_path, bool debug) {
 		free(dir);
 		exit(1);
 	end:
+		;
 	}
 
 	struct stat st = {0};
@@ -274,15 +341,24 @@ void deploy(char *source_path, char *destination_path, bool debug) {
 
 	if (!exists || S_ISLNK(st.st_mode)) {
 		if (S_ISLNK(st.st_mode)) {
-			if (unlink(destination_path) == -1) {
-				perror("unlink");
+			if (dry_run) {
+				printf("[DRY RUN] Would unlink existing symlink: %s\n", destination_path);
+			} else {
+				if (unlink(destination_path) == -1) {
+					perror("unlink");
+				}
 			}
 		}
-		if (symlink(source_path, destination_path) == -1) {
-			perror("symlink");
-			exit(1);
+
+		if (dry_run) {
+			printf("[DRY RUN] Would symlink %s to %s\n", source_path, destination_path);
+		} else {
+			if (symlink(source_path, destination_path) == -1) {
+				perror("symlink");
+				exit(1);
+			}
+			printf("Symlinked %s to %s\n", source_path, destination_path);
 		}
-		printf("Symlinked %s to %s\n", source_path, destination_path);
 	} else {
 		printf("SKIPPING: %s\n", destination_path);
 	}

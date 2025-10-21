@@ -18,21 +18,15 @@ A dotfile manager.
 ## Summary
 
 On a more serious note, `d` is your standard dotfile manager, with the twist
-that it can be configured using C, hopefully leveraging the ~~cursed~~ C
-preprocessor. It's meant to be small and only does what it says it does.
-
-It approaches reconciliation using symlinks. It doesn't support templates or any
-of that nonsense.
-
-A disclaimer for those curious to use `d`: currently, the code is dogshit. But
-I'm sure that many of you wouldn't mind one bit.
+that it can be configured using C, hopefully leveraging the ~~cursed~~ amazing C
+preprocessor.
 
 ### Usage
 
 ```bash
-git clone git@github.com:fox-incubating/d
+git clone git@github.com:hyperupcall-experiments-incubating/d
 cd ./d
-gcc -DCONFIG_DIR=\"$HOME/.dotfiles/config\" ./d.c -o ./d
+./bake build "$HOME/.dotfiles/config"
 ln -s "$PWD/d" "$HOME/.local/bin/d"
 ```
 
