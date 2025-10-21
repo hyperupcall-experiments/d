@@ -30,7 +30,7 @@ cd ./d
 ln -s "$PWD/d" "$HOME/.local/bin/d"
 ```
 
-Your `CONFIG_FILE` should have a file `dotfiles.c` that looks something like:
+Your `CONFIG_FILE` (see `Bakefile.sh`) should have a file `dotfiles.c` that looks something like:
 
 ```c
 struct Entry {
@@ -64,10 +64,6 @@ macros, then maybe this software isn't for you. For an example, see my own
 [dotfiles.c](https://github.com/hyperupcall/dotfiles/blob/trunk/os-unix/data/dotfiles.c).
 Later I'll probably support some sort of `get_configuration()` to allow the use
 of runtime shenanigans.
-
-Whenever you edit, you must run `d compile` to compile the C program into a
-shared object file. It'll be dynamically loaded on subsequent invocations. Maybe
-I'll add a file watcher sometime.
 
 Now, you can use `d` like any other dotfile manager:
 
