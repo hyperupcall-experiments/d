@@ -51,9 +51,12 @@ int main(int argc, char *argv[]) {
 	static bool is_debug = false;
 	static bool is_dry_run = false;
 
+	char *config_file = NULL;
 	char *config_dir = NULL;
-	char *config_file_copy = NULL;
-	char *lib_path = NULL;
+	char *config_file2 = NULL;
+	char *config_file3 = NULL;
+	char *config_filename = NULL;
+	char *so_file = NULL;
 	char *cmd = NULL;
 	void *handle = NULL;
 
@@ -98,34 +101,40 @@ int main(int argc, char *argv[]) {
 		    .info = strp,
 		});
 	}
+
 	if ((command == CommandDeploy || command == CommandUndeploy) && argc > 2) {
 		if (strcmp(argv[2], "--dry") == 0) {
 			is_dry_run = true;
 		}
 	}
 
-	config_dir = strdup(CONFIG_DIR);
-	if (!config_dir) {
-		error((struct Failure){.operation = "duplicate config dir", .reason = strerror(errno)});
+	config_file = strdup(CONFIG_FILE);
+	if (config_file == NULL) {
+		error((struct Failure){.operation = "failed to run strdup", .reason = strerror(errno)});
 		goto error;
 	}
-	char *dir = dirname(config_dir);
-
-	config_file_copy = strdup(CONFIG_DIR);
-	if (!config_file_copy) {
-		error((struct Failure){.operation = "duplicate config file", .reason = strerror(errno)});
+	config_file2 = strdup(config_file);
+	if (config_file2 == NULL) {
+		error((struct Failure){.operation = "failed to run strdup", .reason = strerror(errno)});
 		goto error;
 	}
+	config_file3 = strdup(config_file);
+	if (config_file3 == NULL) {
+		error((struct Failure){.operation = "failed to run strdup", .reason = strerror(errno)});
+		goto error;
+	}
+	config_dir = dirname(config_file2);
+	config_filename = basename(config_file3);
 
-	if (asprintf(&lib_path, "%s/libdotfiles.so", dir) == -1) {
+
+	if (asprintf(&so_file, "%s/libdotfiles.so", config_dir) == -1) {
 		error((struct Failure){.operation = "format library path with asprintf", .reason = strerror(errno)});
 		goto error;
 	}
 
-	char *filename = basename(config_file_copy);
 
 	if (asprintf(&cmd, "gcc -g -fPIC -c %s -o %s/%s.o && gcc -shared -o %s/libdotfiles.so %s/%s.o",
-	             CONFIG_DIR, dir, filename, dir, dir, filename) == -1) {
+	             config_file, config_dir, config_filename, config_dir, config_dir, config_filename) == -1) {
 		error((struct Failure){.operation = "format command with asprintf", .reason = strerror(errno)});
 		goto error;
 	}
@@ -135,8 +144,8 @@ int main(int argc, char *argv[]) {
 		goto error;
 	};
 
-	handle = dlopen(lib_path, RTLD_LAZY);
-	if (!handle) {
+	handle = dlopen(so_file, RTLD_LAZY);
+	if (handle == NULL) {
 		fprintf(stderr, "%s\n", dlerror());
 		goto error;
 	}
@@ -214,9 +223,10 @@ int main(int argc, char *argv[]) {
 
 error:
 	if (handle) dlclose(handle);
-	if (lib_path) free(lib_path);
-	if (config_file_copy) free(config_file_copy);
-	if (config_dir) free(config_dir);
+	if (so_file) free(so_file);
+	if (config_file) free(config_file);
+	if (config_file2) free(config_file2);
+	if (config_file3) free(config_file3);
 	if (cmd) free(cmd);
 	exit(1);
 }
