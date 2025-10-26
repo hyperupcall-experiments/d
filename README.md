@@ -8,7 +8,7 @@ A dotfile manager.
 
 ## Features
 
-- NOT "SUCKLESS" (IF YOU HAVE TO CONVINCE ME THAT YOUR SOFTWARE "SUCKS LESS",
+- NOT "SUCKLESS" (IF YOURE'RE TRYING TO CONVINCE ME THAT YOUR SOFTWARE "SUCKS LESS",
   THEN IT ACTUALLY SUCKS!)
 - NO "CONFIGURATION FILES" (THE CONCEPT OF "CONFIGURATION FILES" SHOULD NOT
   EXIST!)
@@ -24,7 +24,7 @@ preprocessor.
 ### Usage
 
 ```bash
-git clone git@github.com:hyperupcall-experiments-incubating/d
+git clone git@github.com:hyperupcall-experiments/d
 cd ./d
 ./bake build "$HOME/.dotfiles/config"
 ln -s "$PWD/d" "$HOME/.local/bin/d"
