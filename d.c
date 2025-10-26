@@ -151,10 +151,16 @@ int main(int argc, char *argv[]) {
 	}
 	dlerror();
 
-	struct Entry(**configuration) = (struct Entry **)dlsym(handle, "configuration");
+	struct Entry **(*getConfiguration)(void) = (struct Entry **(*)(void))dlsym(handle, "getConfiguration");
 	char *dl_error = dlerror();
 	if (dl_error != NULL) {
 		fprintf(stderr, "%s\n", dl_error);
+		goto error;
+	}
+
+	struct Entry **configuration = getConfiguration();
+	if (configuration == NULL) {
+		fprintf(stderr, "Failed to get configuration\n");
 		goto error;
 	}
 

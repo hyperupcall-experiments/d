@@ -44,17 +44,22 @@ struct Entry {
 
 static struct Entry bash[] = {
 	{
-		.category = "bash"
+		.category = "bash",
 		.source = "/home/edwin/.dotfiles/.bashrc",
 		.destination = "/home/edwin/.bashrc"
 	},
 	Done
 };
 
-struct Entry *configuration[] = {
+static struct Entry *configurations[] = {
 	bash,
 	NULL
 };
+
+// Function that returns the configuration
+struct Entry **getConfiguration() {
+	return configurations;
+}
 ```
 
 Note the `configuration` object; `d` will manage all entries contained within it.
@@ -62,8 +67,6 @@ Note the `configuration` object; `d` will manage all entries contained within it
 The really cool part about this, is that you can use macros. If you don't like
 macros, then maybe this software isn't for you. For an example, see my own
 [dotfiles.c](https://github.com/hyperupcall/dotfiles/blob/trunk/os-unix/data/dotfiles.c).
-Later I'll probably support some sort of `get_configuration()` to allow the use
-of runtime shenanigans.
 
 Now, you can use `d` like any other dotfile manager:
 
