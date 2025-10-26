@@ -14,6 +14,10 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+struct Group {
+	char const *name;
+	struct Entry **entries;
+};
 struct Entry {
 	char const *category;
 	char const *source;
@@ -58,6 +62,7 @@ int main(int argc, char *argv[]) {
 	char *config_filename = NULL;
 	char *so_file = NULL;
 	char *cmd = NULL;
+	char *group_name = NULL;
 	void *handle = NULL;
 
 	if (getenv("DEBUG") != NULL) {
@@ -65,7 +70,7 @@ int main(int argc, char *argv[]) {
 	}
 
 	char *help_menu = "d: A dotfile manager.\n"
-	                  "Commands: <deploy[ --dry] | undeploy[ --dry] | print>\n";
+	                  "Commands: <deploy[ --group=* --dry] | undeploy[ --group=* --dry] | print>\n";
 
 	enum Command {
 		CommandNone,
@@ -103,8 +108,14 @@ int main(int argc, char *argv[]) {
 	}
 
 	if ((command == CommandDeploy || command == CommandUndeploy) && argc > 2) {
-		if (strcmp(argv[2], "--dry") == 0) {
-			is_dry_run = true;
+		for (int i = 2; i < argc; i += 1) {
+			if (strcmp(argv[i], "--dry") == 0) {
+				is_dry_run = true;
+			}
+
+			if (strncmp(argv[i], "--group=", 8) == 0) {
+				group_name = argv[i] + 8;
+			}
 		}
 	}
 
@@ -151,15 +162,43 @@ int main(int argc, char *argv[]) {
 	}
 	dlerror();
 
-	struct Entry **(*getConfiguration)(void) = (struct Entry **(*)(void))dlsym(handle, "getConfiguration");
+	struct Group **(*getGroups)(void) = (struct Group **(*)(void))dlsym(handle, "getGroups");
 	char *dl_error = dlerror();
 	if (dl_error != NULL) {
 		fprintf(stderr, "%s\n", dl_error);
 		goto error;
 	}
 
-	struct Entry **configuration = getConfiguration();
-	if (configuration == NULL) {
+	struct Group *(*getDefaultGroup)(void) = (struct Group *(*)(void))dlsym(handle, "getDefaultGroup");
+	dl_error = dlerror();
+	if (dl_error != NULL) {
+		fprintf(stderr, "%s\n", dl_error);
+		goto error;
+	}
+
+	struct Group **groups = getGroups();
+	if (groups == NULL) {
+		fprintf(stderr, "Failed to get groups\n");
+		goto error;
+	}
+
+	struct Group *current_group = NULL;
+	if (group_name == NULL) {
+		current_group = getDefaultGroup();
+	} else {
+		for (int i = 0; groups[i] != NULL; i++) {
+			if (strcmp(groups[i]->name, group_name) == 0) {
+				current_group = groups[i];
+				break;
+			}
+		}
+		if (current_group == NULL) {
+			fprintf(stderr, "Group '%s' not found\n", group_name);
+			goto error;
+		}
+	}
+
+	if (current_group->entries == NULL) {
 		fprintf(stderr, "Failed to get configuration\n");
 		goto error;
 	}
@@ -167,7 +206,7 @@ int main(int argc, char *argv[]) {
 	if (command == CommandPrint)
 		printf("[\n");
 	for (int i = 0;; i += 1) {
-		struct Entry *entrygroup = configuration[i];
+		struct Entry *entrygroup = current_group->entries[i];
 		if (entrygroup == NULL) {
 			break;
 		}
@@ -183,7 +222,7 @@ int main(int argc, char *argv[]) {
 				    "\t{ \"category\": \"%s\", \"source\": \"%s\", \"destination\": \"%s\" }", entry.category, entry.source,
 				    entry.destination
 				);
-				if (configuration[i + 1] == NULL) {
+				if (current_group->entries[i + 1] == NULL) {
 					printf("\n");
 				} else {
 					printf(",\n");
