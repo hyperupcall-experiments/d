@@ -13,40 +13,15 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include "d.h"
 
-struct Group {
-	char const *name;
-	struct Entry **entries;
-};
-struct Entry {
-	char const *category;
-	char const *source;
-	char const *destination;
-};
-struct Failure {
-	char *operation;
-	char *reason;
-	char *info;
-};
-void error(struct Failure failure) {
+void error(const char *message) {
 #define RED "\033[0;31m"
-#define BLUE "\033[0;34m"
-#define CYAN "\033[0;36m"
-#define YELLOW "\033[0;33m"
-#define MAGENTA "\033[0;35m"
 #define RESET "\033[0m"
-	fprintf(
-	    stderr,
-	    "Application reached a " RED "terminating failure" RESET "...\n" BLUE "Operation: " RESET "Failed to %s\n" CYAN
-	    "Reason: " RESET "%s\n",
-	    failure.operation, failure.reason
-	);
-	if (failure.info != NULL) {
-		fprintf(stderr, YELLOW "Extra Information: " RESET "%s\n", failure.info);
-	}
+	fprintf(stderr, RED "%s" RESET "\n", message);
 }
-void fail(struct Failure failure) {
-	error(failure);
+void fail(const char *message) {
+	error(message);
 	exit(EXIT_FAILURE);
 }
 void deploy(char *, char *, bool, bool);
@@ -80,10 +55,7 @@ int main(int argc, char *argv[]) {
 	} command = CommandNone;
 
 	if (argc < 2) {
-		fail((struct Failure){
-		    .operation = "validate arguments",
-		    .reason = "Must pass a subcommand",
-		});
+		fail("Failed to find a subcommand");
 	}
 
 	if (strcmp(argv[1], "deploy") == 0) {
@@ -95,16 +67,9 @@ int main(int argc, char *argv[]) {
 	} else {
 		char *strp = NULL;
 		if (asprintf(&strp, "\nSubcommand: %s\n---\nHELP MENU:\n%s", argv[1], help_menu) == -1) {
-			fail((struct Failure){
-			    .operation = "format error with asprintf",
-			    .reason = strerror(errno),
-			});
+			fail("Failed to create help message");
 		}
-		fail((struct Failure){
-		    .operation = "validate arguments",
-		    .reason = "Subcommand not recognized",
-		    .info = strp,
-		});
+		fail("Failed to recognize subcommand");
 	}
 
 	if ((command == CommandDeploy || command == CommandUndeploy) && argc > 2) {
@@ -121,17 +86,17 @@ int main(int argc, char *argv[]) {
 
 	config_file = strdup(CONFIG_FILE);
 	if (config_file == NULL) {
-		error((struct Failure){.operation = "failed to run strdup", .reason = strerror(errno)});
+		error("Failed to copy config path");
 		goto error;
 	}
 	config_file2 = strdup(config_file);
 	if (config_file2 == NULL) {
-		error((struct Failure){.operation = "failed to run strdup", .reason = strerror(errno)});
+		error("Failed to copy config path");
 		goto error;
 	}
 	config_file3 = strdup(config_file);
 	if (config_file3 == NULL) {
-		error((struct Failure){.operation = "failed to run strdup", .reason = strerror(errno)});
+		error("Failed to copy config path");
 		goto error;
 	}
 	config_dir = dirname(config_file2);
@@ -139,19 +104,19 @@ int main(int argc, char *argv[]) {
 
 
 	if (asprintf(&so_file, "%s/libdotfiles.so", config_dir) == -1) {
-		error((struct Failure){.operation = "format library path with asprintf", .reason = strerror(errno)});
+		error("Failed to create library path");
 		goto error;
 	}
 
 
 	if (asprintf(&cmd, "gcc -g -fPIC -c %s -o %s/%s.o && gcc -shared -o %s/libdotfiles.so %s/%s.o",
 	             config_file, config_dir, config_filename, config_dir, config_dir, config_filename) == -1) {
-		error((struct Failure){.operation = "format command with asprintf", .reason = strerror(errno)});
+		error("Failed to create compilation command");
 		goto error;
 	}
 
 	if (system(cmd) == -1) {
-		error((struct Failure){.operation = "system", .reason = strerror(errno)});
+		error("Failed to compile config");
 		goto error;
 	};
 
@@ -162,27 +127,27 @@ int main(int argc, char *argv[]) {
 	}
 	dlerror();
 
-	struct Group **(*getGroups)(void) = (struct Group **(*)(void))dlsym(handle, "getGroups");
+	Group **(*getGroups)(void) = (Group **(*)(void))dlsym(handle, "getGroups");
 	char *dl_error = dlerror();
 	if (dl_error != NULL) {
 		fprintf(stderr, "%s\n", dl_error);
 		goto error;
 	}
 
-	struct Group *(*getDefaultGroup)(void) = (struct Group *(*)(void))dlsym(handle, "getDefaultGroup");
+	Group *(*getDefaultGroup)(void) = (Group *(*)(void))dlsym(handle, "getDefaultGroup");
 	dl_error = dlerror();
 	if (dl_error != NULL) {
 		fprintf(stderr, "%s\n", dl_error);
 		goto error;
 	}
 
-	struct Group **groups = getGroups();
+	Group **groups = getGroups();
 	if (groups == NULL) {
 		fprintf(stderr, "Failed to get groups\n");
 		goto error;
 	}
 
-	struct Group *current_group = NULL;
+	Group *current_group = NULL;
 	if (group_name == NULL) {
 		current_group = getDefaultGroup();
 	} else {
@@ -206,20 +171,20 @@ int main(int argc, char *argv[]) {
 	if (command == CommandPrint)
 		printf("[\n");
 	for (int i = 0;; i += 1) {
-		struct Entry *entrygroup = current_group->entries[i];
+		Entry *entrygroup = current_group->entries[i];
 		if (entrygroup == NULL) {
 			break;
 		}
 
 		for (int j = 0;; j += 1) {
-			struct Entry entry = entrygroup[j];
-			if (entry.source == NULL && entry.destination == NULL && entry.category == NULL) {
+			Entry entry = entrygroup[j];
+			if (entry.source == NULL && entry.destination == NULL) {
 				break;
 			}
 
 			if (command == CommandPrint) {
 				printf(
-				    "\t{ \"category\": \"%s\", \"source\": \"%s\", \"destination\": \"%s\" }", entry.category, entry.source,
+				    "\t{ \"source\": \"%s\", \"destination\": \"%s\" }", entry.source,
 				    entry.destination
 				);
 				if (current_group->entries[i + 1] == NULL) {
@@ -301,21 +266,16 @@ void deploy(char *source_path, char *destination_path, bool debug, bool dry_run)
 
 		struct stat st1 = {0};
 		if (stat(source_path, &st1) == -1) {
-			fprintf(stderr, "Error: Source path  must exist: \"%s\"\n", source_path);
-			exit(1);
+			fail("Failed to find source path");
 		}
 
 		struct stat st2 = {0};
 		if (stat(destination_path, &st2) != -1) {
 			if (S_ISDIR(st1.st_mode) && !S_ISDIR(st2.st_mode)) {
-				printf("Error: Destination path is not a directory but the source path is a directory.\n");
-				printf("source_path: %s\ndestination_path: %s\n", source_path, destination_path);
-				exit(1);
+				fail("Failed to match directory types");
 			}
 			if (!S_ISDIR(st1.st_mode) && S_ISDIR(st2.st_mode)) {
-				printf("Error: Destination path is a directory but the source path is not a directory.\n");
-				printf("source_path: %s\ndestination_path: %s\n", source_path, destination_path);
-				exit(1);
+				fail("Failed to match directory types");
 			}
 		}
 	}
@@ -328,21 +288,20 @@ void deploy(char *source_path, char *destination_path, bool debug, bool dry_run)
 	{
 		char *dir = malloc(strlen(destination_path) + 1);
 		if (dir == NULL) {
-			perror("malloc");
+			error("Failed to allocate path memory");
 			goto error;
 		}
 
 		strcpy(dir, destination_path);
 		dirname(dir);
 		if (dir == NULL) {
-			perror("dirname");
+			error("Failed to extract directory name");
 			goto error;
 		}
 		struct stat st = {0};
 		if (stat(dir, &st) == -1) {
 			if (errno != ENOENT) {
-				perror("stat");
-				exit(1);
+				fail("Failed to check path status");
 			}
 
 			if (dry_run) {
@@ -351,7 +310,7 @@ void deploy(char *source_path, char *destination_path, bool debug, bool dry_run)
 				printf("Creating directory for: %s\n", dir);
 				if (mkdir(dir, 0755) == -1) {
 					perror("mkdir");
-					exit(1);
+					fail("Failed to make directory");
 				}
 			}
 		}
@@ -369,8 +328,7 @@ void deploy(char *source_path, char *destination_path, bool debug, bool dry_run)
 	bool exists = true;
 	if (lstat(destination_path, &st) == -1) {
 		if (errno != ENOENT) {
-			perror("stat");
-			exit(1);
+			fail("Failed to check path status");
 		}
 
 		exists = false;
@@ -382,7 +340,7 @@ void deploy(char *source_path, char *destination_path, bool debug, bool dry_run)
 				printf("[DRY RUN] Would unlink existing symlink: %s\n", destination_path);
 			} else {
 				if (unlink(destination_path) == -1) {
-					perror("unlink");
+					error("Failed to remove old link");
 				}
 			}
 		}
@@ -391,8 +349,7 @@ void deploy(char *source_path, char *destination_path, bool debug, bool dry_run)
 			printf("[DRY RUN] Would symlink %s to %s\n", source_path, destination_path);
 		} else {
 			if (symlink(source_path, destination_path) == -1) {
-				perror("symlink");
-				exit(1);
+				fail("Failed to create link");
 			}
 			printf("Symlinked %s to %s\n", source_path, destination_path);
 		}
