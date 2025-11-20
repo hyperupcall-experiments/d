@@ -1,9 +1,0 @@
-[Unit]
-Description=Antarctica
-
-[Service]
-Type=notify
-ExecStart=%h/bin/d watch-config
-
-[Install]
-WantedBy=default.target

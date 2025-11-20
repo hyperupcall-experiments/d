@@ -42,32 +42,30 @@ struct Entry {
 	char const *source;
 	char const *destination;
 };
-#define Done { \
-	.category = NULL, .source = NULL, .destination = NULL \
-}
+#define Done { .source = NULL, .destination = NULL }
+#define Home CONFIG_HOME
 
+// Each application corresponds to an "entry".
 static struct Entry bash[] = {
 	{
-		.category = "bash",
-		.source = "/home/edwin/.dotfiles/.bashrc",
-		.destination = "/home/edwin/.bashrc"
+		.source = Home "/.dotfiles/.bashrc",
+		.destination = Home "/.bashrc"
 	},
 	{
-		.category = "bash",
-		.source = "/home/edwin/.dotfiles/.bash_login",
-		.destination = "/home/edwin/.bash_login"
+		.source = Home "/.dotfiles/.bash_login",
+		.destination = Home "/.bash_login"
 	},
 	Done
 };
 static struct Entry zsh[] = {
 	{
-		.category = "zsh",
-		.source = "/home/edwin/.dotfiles/.zshrc",
-		.destination = "/home/edwin/.zshrc"
+		.source = Home "/.dotfiles/.zshrc",
+		.destination = Home "/.zshrc"
 	},
 	Done
 };
 
+// Group entries that should be deployed together.
 static struct Group group1 = {
 	.name = "Linux desktop",
 	.entries = (struct Entry *[]){
@@ -83,12 +81,13 @@ static struct Group group2 = {
 		NULL
 	}
 };
+
+// Finally, list all groups and configure a default group.
 static struct Group** groups = (struct Group *[]){
 	&group1,
 	&group2,
 	NULL
 };
-
 struct Group **getGroups() {
 	return groups;
 }
@@ -99,9 +98,8 @@ struct Group *getDefaultGroup() {
 
 In summary, each dotfile entry corresponds to some application and can have multiple dotfile files or directories. Then, group them by how you would like to deploy them. You must write `getGroups()` and `getDefaultGroup()` so `d` can see and use the groups that you have.
 
-The really cool part about this, is that you can use macros. If you don't like
-macros, then maybe this software isn't for you. For an example, see my own
-[dotfiles.c](https://github.com/hyperupcall/dotfiles/blob/trunk/os-unix/data/dotfiles.c).
+The really cool part about this, is that you can use macros! This is your chance to be creative! See
+[my dotfiles.c](https://github.com/hyperupcall/dotfiles/blob/trunk/os-unix/data/dotfiles.c) for inspiration.
 
 Now, you can use `d` like any other dotfile manager:
 

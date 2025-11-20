@@ -3,7 +3,6 @@
 	UseTab: ForIndentation,
 	IndentWidth: 3,
 	TabWidth: 3,
-	AlignAfterOpenBracket: BlockIndent,
 	AlignEscapedNewlines: Left,
 	AllowShortFunctionsOnASingleLine: Empty,
 	AlwaysBreakTemplateDeclarations: Yes,
