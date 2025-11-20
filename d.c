@@ -120,7 +120,7 @@ int main(int argc, char *argv[]) {
 	}
 
 
-	if (asprintf(&cmd, "gcc -g -fPIC -c %s -o %s/%s.o && gcc -shared -o %s/libdotfiles.so %s/%s.o",
+	if (asprintf(&cmd, "gcc -g -fPIC -c %s -DCONFIG_HOME=\"\\\"$HOME\\\"\" -o %s/%s.o && gcc -shared -o %s/libdotfiles.so %s/%s.o",
 	             config_file, config_dir, config_filename, config_dir, config_dir, config_filename) == -1) {
 		error("Failed to create compilation command");
 		goto error;
