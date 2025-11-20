@@ -22,6 +22,8 @@ void error(const char *message) {
 #define RESET "\033[0m"
 	fprintf(stderr, RED "%s" RESET "\n", message);
 }
+
+__attribute__((noreturn))
 void fail(const char *message) {
 	error(message);
 	exit(EXIT_FAILURE);
@@ -57,7 +59,8 @@ int main(int argc, char *argv[]) {
 	} command = CommandNone;
 
 	if (argc < 2) {
-		fail("Failed to find a subcommand");
+		fprintf(stderr, "%s", help_menu);
+		fail("Failed to recognize subcommand");
 	}
 
 	if (strcmp(argv[1], "deploy") == 0) {
@@ -67,10 +70,7 @@ int main(int argc, char *argv[]) {
 	} else if (strcmp(argv[1], "print") == 0) {
 		command = CommandPrint;
 	} else {
-		char *strp = NULL;
-		if (asprintf(&strp, "\nSubcommand: %s\n---\nHELP MENU:\n%s", argv[1], help_menu) == -1) {
-			fail("Failed to create help message");
-		}
+		fprintf(stderr, "%s", help_menu);
 		fail("Failed to recognize subcommand");
 	}
 
@@ -104,6 +104,15 @@ int main(int argc, char *argv[]) {
 	config_dir = dirname(config_file2);
 	config_filename = basename(config_file3);
 
+	struct stat st;
+	if (stat(config_file, &st) == -1) {
+		perror("Failed to stat file");
+		goto error;
+	}
+	if (S_ISDIR(st.st_mode)) {
+		error("Config file must not be a directory");
+		goto error;
+	}
 
 	if (asprintf(&so_file, "%s/libdotfiles.so", config_dir) == -1) {
 		error("Failed to create library path");
@@ -117,10 +126,17 @@ int main(int argc, char *argv[]) {
 		goto error;
 	}
 
-	if (system(cmd) == -1) {
+	// TODO
+	printf("Executing: %s\n", cmd);
+	int result = system(cmd);
+	if (result == -1) {
 		error("Failed to compile config");
 		goto error;
 	};
+	if (!WIFEXITED(result) || (WIFEXITED(result) && WEXITSTATUS(result) != 0)) {
+		error("Command failed to exit\n");
+		goto error;
+	}
 
 	handle = dlopen(so_file, RTLD_LAZY);
 	if (handle == NULL) {
