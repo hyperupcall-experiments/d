@@ -1,3 +1,5 @@
+#include <fcntl.h>
+#include <sys/sendfile.h>
 #define _GNU_SOURCE
 
 #include <dlfcn.h>
@@ -334,17 +336,30 @@ void deploy(char *source_path, char *destination_path, bool debug, bool dry_run)
 		exists = false;
 	}
 
-	if (!exists || S_ISLNK(st.st_mode)) {
-		if (S_ISLNK(st.st_mode)) {
-			if (dry_run) {
-				printf("[DRY RUN] Would unlink existing symlink: %s\n", destination_path);
-			} else {
-				if (unlink(destination_path) == -1) {
-					error("Failed to remove old link");
-				}
+	// TODO
+	// This is bad logic for when outside of home there is a file not symlink
+	// Also, shouldn't assume "home" is destination. They could have macro for that
+	if (exists && !S_ISLNK(st.st_mode)) {
+		printf("SKIPPING: %s\n", destination_path);
+		return;
+	}
+
+	if (S_ISLNK(st.st_mode)) {
+		if (dry_run) {
+			printf("[DRY RUN] Would unlink existing symlink: %s\n", destination_path);
+		} else {
+			if (unlink(destination_path) == -1) {
+				error("Failed to remove old link");
 			}
 		}
+	}
 
+	char *home = getenv("HOME");
+	if (home == NULL) {
+		fail("Failed to get home directory");
+	}
+
+	if (strncmp(destination_path, home, strlen(home)) == 0) {
 		if (dry_run) {
 			printf("[DRY RUN] Would symlink %s to %s\n", source_path, destination_path);
 		} else {
@@ -354,6 +369,36 @@ void deploy(char *source_path, char *destination_path, bool debug, bool dry_run)
 			printf("Symlinked %s to %s\n", source_path, destination_path);
 		}
 	} else {
-		printf("SKIPPING: %s\n", destination_path);
+		if (dry_run) {
+			printf("[DRY RUN] Would copy %s to %s\n", source_path, destination_path);
+		} else {
+			int source_fd = open(source_path, O_RDONLY);
+			if (source_fd == -1) {
+				fail("Failed to open source file");
+			}
+
+			int dest_fd = open(destination_path, O_WRONLY | O_CREAT, 0644);
+			if (dest_fd == -1) {
+				close(source_fd);
+				fail("Failed to create destination file");
+			}
+
+			struct stat stat_buf;
+			if (fstat(source_fd, &stat_buf) == -1) {
+				close(source_fd);
+				close(dest_fd);
+				fail("Failed to get file size");
+			}
+
+			if (sendfile(dest_fd, source_fd, NULL, stat_buf.st_size) == -1) {
+				close(source_fd);
+				close(dest_fd);
+				fail("Failed to copy file");
+			}
+
+			close(source_fd);
+			close(dest_fd);
+			printf("Copied %s to %s\n", source_path, destination_path);
+		}
 	}
 }
