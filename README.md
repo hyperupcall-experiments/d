@@ -26,7 +26,7 @@ preprocessor.
 ```bash
 git clone git@github.com:hyperupcall-experiments/d
 cd ./d
-./bake build "$HOME/.dotfiles/config"
+./bake build "$HOME/.dotfiles/config/dotfiles.c"
 ln -s "$PWD/d" "$HOME/.local/bin/d"
 ```
 
