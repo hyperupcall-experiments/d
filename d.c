@@ -260,6 +260,10 @@ error:
 }
 
 void deploy(char *source_path, char *destination_path, bool debug, bool dry_run) {
+	if (debug) {
+		printf("source_path: %s\ndestination_path: %s\n", source_path, destination_path);
+	}
+
 	// Check trailing slash.
 	{
 		if (destination_path[strlen(destination_path) - 1] == '/') {
@@ -296,10 +300,6 @@ void deploy(char *source_path, char *destination_path, bool debug, bool dry_run)
 				fail("Failed to match directory types");
 			}
 		}
-	}
-
-	if (debug) {
-		printf("source_path: %s\ndestination_path: %s\n", source_path, destination_path);
 	}
 
 	// Create parent directory if it does not exist.
